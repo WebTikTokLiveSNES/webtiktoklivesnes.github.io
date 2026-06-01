@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebTikTokLiveSNES</title>
+<link rel="icon" type="image/png" href="assets/wtklsnes_logo.png">
+<link rel="apple-touch-icon" href="assets/wtklsnes_logo.png">
+<meta property="og:title" content="WebTikTokLiveSNES">
+<meta property="og:description" content="Emulador SNES conectado ao TikTok Live — gifts e chat disparam ações no jogo em tempo real.">
+<meta property="og:image" content="assets/wtklsnes_logo.png">
+<script>
+  // Registra o SW apenas se os headers COOP/COEP ainda não chegaram pelo servidor.
+  // - GitHub Pages: não tem headers → SW registra e adiciona via interceptação
+  // - server.py local: já tem headers → crossOriginIsolated=true → pula o SW
+  if ('serviceWorker' in navigator && !window.crossOriginIsolated) {
+    navigator.serviceWorker.register('./coi-serviceworker.js')
+      .then(reg => {
+        const sw = reg.installing || reg.waiting;
+        if (sw) sw.addEventListener('statechange', e => {
+          if (e.target.state === 'activated') location.reload();
+        });
+      })
+      .catch(err => console.warn('[coi-sw]', err.message));
+  }
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="key-flash">
+  <div class="kf-label" id="kf-label"></div>
+  <div class="kf-user"  id="kf-user"></div>
+</div>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<div id="header">
+  <img id="header-logo" src="assets/wtklsnes_logo.png" alt="WebTikTokLiveSNES">
+  <h1>WebTikTokLiveSNES</h1>
+  <div style="flex:1"></div>
+  <span id="viewers-hdr" style="font-size:0.65rem;color:var(--muted)"></span>
+  <span style="font-size:0.65rem;color:var(--muted);margin-left:8px" id="hdr-conn">desconectado</span>
+  <a href="ajuda.html" title="Ajuda" style="margin-left:12px;color:var(--muted);font-size:0.75rem;text-decoration:none;opacity:0.7;transition:opacity 0.2s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">❓ Ajuda</a>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Emulator panel -->
+  <div id="emulator-panel">
+    <button id="sidebar-toggle" onclick="toggleSidebar()"></button>
+    <div id="emulator-wrap">
+
+      <!-- Game area: canvas + rewind btn + scanlines — shrinks to make room for banner -->
+      <div id="game-area">
+        <div class="scanlines"></div>
+        <div id="blackout-overlay"></div>
+        <div id="splash-overlay"><canvas id="splash-canvas"></canvas></div>
+        <!-- Rewind button — visible only when emulator is running -->
+        <button id="rewind-btn" title="Segurar para rebobinar"
+                onmousedown="startRewind()" onmouseup="stopRewind()" onmouseleave="stopRewind()"
+                ontouchstart="startRewind(event)" ontouchend="stopRewind()">
+          ⏪
+        </button>
+        <div id="start-screen">
+          <img class="start-logo" src="assets/wtklsnes_logo.png" alt="WebTikTokLiveSNES">
+          <p>Conecte o TikTok Live na sidebar, depois carregue uma ROM .sfc/.smc para jogar.</p>
+
+          <div id="rom-drop"
+               onclick="document.getElementById('rom-input').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleRomDrop(event)">
+            <input type="file" id="rom-input" accept=".sfc,.smc,.zip" onchange="loadRomFromFile(this.files[0])">
+            <div style="font-size:2rem;margin-bottom:6px">📁</div>
+            <div>Arraste a ROM aqui ou clique</div>
+            <div style="font-size:0.65rem;margin-top:3px;color:var(--muted)">.sfc / .smc / .zip</div>
+          </div>
+
+          <div class="rom-info">
+            <div><span>Emulador:</span> Nostalgist.js (RetroArch WASM)</div>
+            <div><span>Chat:</span> Zerody → Socket.IO (direto no browser)</div>
+            <div><span>Gifts →</span> KeyboardEvents em tempo real</div>
+            <div><span>TTS:</span> Web Speech API pt-BR</div>
+          </div>
+<!-- 
+          <button class="btn btn-big btn-green" onclick="tryLoadDemo()">▶ DEMO (sem ROM)</button> -->
+        </div>
+        <div id="nostalgist-container">
+          <canvas id="nostalgist-canvas"></canvas>
+        </div>
+        <!-- Watermark — visible only while emulator is running -->
+        <div id="watermark">
+          <img src="assets/wtklsnes_logo.png" alt="WebTikTokLiveSNES" width="90">
+        </div>
+      </div>
+
+      <!-- Gift banner — in-flow below game, not overlaid -->
+      <div id="gift-banner">
+        <img id="gift-banner-bg" alt=""
+             onerror="document.getElementById('gift-banner').style.display='none'">
+
+        <!-- SNES controller real-time display (left 20%) -->
+        <div id="controller-overlay">
+          <svg id="ctrl-svg" viewBox="0 0 220 84" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <!-- Controller body -->
+            <rect x="2" y="18" width="216" height="62" rx="31" class="ctrl-body"/>
+
+            <!-- L shoulder -->
+            <g id="ctrl-l-btn" class="ctrl-shldr">
+              <rect x="6" y="8" width="52" height="18" rx="9"/>
+              <text x="32" y="17">L</text>
+            </g>
+            <!-- R shoulder -->
+            <g id="ctrl-r-btn" class="ctrl-shldr">
+              <rect x="162" y="8" width="52" height="18" rx="9"/>
+              <text x="188" y="17">R</text>
+            </g>
+
+            <!-- D-pad background -->
+            <circle cx="58" cy="52" r="24" class="ctrl-dpad-bg"/>
+
+            <!-- D-pad up -->
+            <g id="ctrl-up" class="ctrl-dpad">
+              <rect x="52" y="28" width="12" height="20" rx="2"/>
+              <polygon points="58,30 54,36 62,36"/>
+            </g>
+            <!-- D-pad down -->
+            <g id="ctrl-dn" class="ctrl-dpad">
+              <rect x="52" y="56" width="12" height="20" rx="2"/>
+              <polygon points="58,74 54,68 62,68"/>
+            </g>
+            <!-- D-pad left -->
+            <g id="ctrl-lt" class="ctrl-dpad">
+              <rect x="34" y="46" width="20" height="12" rx="2"/>
+              <polygon points="36,52 41,48 41,56"/>
+            </g>
+            <!-- D-pad right -->
+            <g id="ctrl-rt" class="ctrl-dpad">
+              <rect x="62" y="46" width="20" height="12" rx="2"/>
+              <polygon points="80,52 75,48 75,56"/>
+            </g>
+            <!-- D-pad center (non-interactive) -->
+            <rect x="52" y="46" width="12" height="12" class="ctrl-center"/>
+
+            <!-- Select -->
+            <g id="ctrl-select" class="ctrl-meta">
+              <ellipse cx="94" cy="62" rx="14" ry="8"/>
+              <text x="94" y="62">SEL</text>
+            </g>
+            <!-- Start -->
+            <g id="ctrl-start" class="ctrl-meta">
+              <ellipse cx="126" cy="62" rx="14" ry="8"/>
+              <text x="126" y="62">STA</text>
+            </g>
+
+            <!-- Y (left) — green -->
+            <g id="ctrl-y-btn" class="ctrl-face-y">
+              <circle cx="150" cy="50" r="10"/>
+              <text x="150" y="50">Y</text>
+            </g>
+            <!-- B (bottom) — yellow -->
+            <g id="ctrl-b-btn" class="ctrl-face-b">
+              <circle cx="164" cy="64" r="10"/>
+              <text x="164" y="64">B</text>
+            </g>
+            <!-- A (right) — red -->
+            <g id="ctrl-a-btn" class="ctrl-face-a">
+              <circle cx="178" cy="50" r="10"/>
+              <text x="178" y="50">A</text>
+            </g>
+            <!-- X (top) — blue -->
+            <g id="ctrl-x-btn" class="ctrl-face-x">
+              <circle cx="164" cy="36" r="10"/>
+              <text x="164" y="36">X</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Gift text (center+right area) -->
+        <div id="gift-banner-content">
+          <span id="gift-banner-label"></span>
+          <span id="gift-banner-user"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-controls">
+
+      <!-- ── TikTok Connection ── -->
+      <div class="sidebar-section">
+        <label>🔴 Conectar TikTok Live</label>
+
+        <!-- Paste full Zerody OBS URL -->
+        <textarea id="zerody-url-paste"
+                  placeholder="Cole aqui a URL do Zerody OBS (opcional — pula o captcha):&#10;https://tiktok-chat-reader.zerody.one/obs.html?username=...&token=..."
+                  oninput="parseZerdyUrl(this.value)"></textarea>
+        <div class="url-hint">
+          Gere em <span onclick="window.open('https://tiktok-chat-reader.zerody.one','_blank')">tiktok-chat-reader.zerody.one</span>
+          → copie o link do OBS aqui.
+        </div>
+
+        <div style="margin-top:8px">
+          <div class="input-row">
+            <input type="text" id="username-input" placeholder="@username" oninput="onCredentialChange()">
+            <input type="text" id="token-input" placeholder="token" style="width:80px;flex:none" oninput="onCredentialChange()">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:5px;margin-top:5px">
+          <button class="btn btn-green" style="flex:1" id="connect-btn" onclick="connectTikTok()">▶ Conectar</button>
+          <button class="btn btn-red"  style="flex:0 0 auto" id="disconnect-btn" onclick="disconnectTikTok()" style="display:none">■ Desconectar</button>
+        </div>
+
+        <div class="conn-status" id="conn-status">
+          <span class="conn-dot" id="conn-dot"></span>
+          <span class="conn-text" id="conn-text">Desconectado</span>
+        </div>
+      </div>
+
+      <!-- ── Gift map ── -->
+      <div class="sidebar-section">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          🎁 Mapeamento
+          <button class="btn btn-outline" onclick="openEditor()" style="padding:2px 7px;font-size:0.6rem">✏️ editar</button>
+        </label>
+        <select class="preset-select" id="preset-select" onchange="applyPreset(this.value)">
+        </select>
+        <div class="gift-map" id="gift-map-preview"></div>
+      </div>
+
+      <!-- ── Controls ── -->
+      <div class="sidebar-section">
+        <label>🎮 Controles</label>
+        <div class="ctrl-text">
+          <b>Setas</b>=D-pad &nbsp; <b>Z</b>=A &nbsp; <b>X</b>=B &nbsp; <b>A</b>=Y &nbsp; <b>S</b>=X<br>
+          <b>Enter</b>=Start &nbsp; <b>Shift</b>=Select
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:0.63rem;color:var(--muted);white-space:nowrap">Vol TTS</span>
+          <input type="range" id="tts-vol" min="0" max="1" step="0.1" value="0.8">
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-outline" id="mute-btn" onclick="toggleMute()" style="flex:1">🔊 Mute TTS</button>
+          <button class="btn btn-outline" onclick="diagnoseTTS()" title="Diagnóstico TTS" style="padding:5px 8px">🔍</button>
+          <button class="btn btn-purple" style="padding:5px 8px;font-size:0.7rem"
+                  onclick="var u=new SpeechSynthesisUtterance('teste de voz');if(_ttsVoice)u.voice=_ttsVoice;u.volume=1;u.onstart=()=>addLog('sys','<span class=ts>'+ts()+'</span> <span style=color:var(--green)>TTS: ✓ ok</span>');u.onerror=e=>addLog('sys','<span class=ts>'+ts()+'</span> <span style=color:var(--pink)>TTS erro: '+e.error+'</span>');speechSynthesis.speak(u);"
+                  title="Teste TTS">🎤</button>
+        </div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:0.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="tts-gifts" checked onchange="ttsCfg.gifts=this.checked;saveTtsCfg()">
+            🎁 Gifts
+          </label>
+          <label style="font-size:0.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="tts-chat" onchange="ttsCfg.chat=this.checked;saveTtsCfg()">
+            💬 Chat <span style="font-size:0.6rem;opacity:0.6">(1 msg/3s)</span>
+          </label>
+          <label style="font-size:0.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="tts-likes" checked onchange="ttsCfg.likes=this.checked;saveTtsCfg()">
+            💜 Triggers de likes
+          </label>
+          <label style="font-size:0.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="tts-keywords" checked onchange="ttsCfg.keywords=this.checked;saveTtsCfg()">
+            🔑 Palavras-chave
+          </label>
+        </div>
+        <button class="btn btn-outline btn-full" style="margin-top:5px" onclick="toggleRomDrop()">📁 Carregar ROM</button>
+      </div>
+
+      <!-- ── Test gifts ── -->
+      <div class="sidebar-section">
+        <label>🧪 Testar Gifts</label>
+        <div class="test-gifts">
+          <button class="btn btn-outline" onclick="onGiftReceived('Rose','@teste',1,false)">🌹 Rose</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Lion','@teste',1,false)">🦁 Lion</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Diamond','@teste',1,false)">💎 Diamond</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Cake','@teste',1,false)">🎂 Cake</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Rocket','@teste',1,false)">🚀 Rocket</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Heart','@teste',5,false)">❤️ Heart×5</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('rewind','@teste',1,false)">⏪ Rewind</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('slowmotion','@teste',1,false)">🐢 Slow Mo</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('reset','@teste',1,false)">🔄 Reset</button>
+          <button class="btn btn-outline" onclick="applyPowerup(0,'@teste')">⭐ PowerUp 0</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('GG','@teste',1,false)">🎮 GG</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Donut','@teste',1,false)">🍩 Donut</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('TikTok Logo','@teste',1,false)">🎵 TikTok Logo</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Gamepad','@teste',1,false)">🕹️ Gamepad</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Finger Heart','@teste',1,false)">🤞 Finger Heart</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Football','@teste',1,false)">⚽ Football</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Silver Crest','@teste',1,false)">🏅 Silver Crest</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Hamster','@teste',1,false)">🐹 Hamster</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Tropical Island','@teste',1,false)">🏝️ Tropical Island</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Toucan','@teste',1,false)">🦜 Toucan</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Earrings','@teste',1,false)">💎 Earrings</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('TikTok Ticket','@teste',1,false)">🎟️ TikTok Ticket</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Capybara','@teste',1,false)">🐾 Capybara</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Tiny Diny','@teste',1,false)">🦕 Tiny Diny</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Furious Fire','@teste',1,false)">🔥 Furious Fire</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Game Controller','@teste',1,false)">🎮 Game Controller</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Go Popular','@teste',1,false)">🌟 Go Popular</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Energy Capsule','@teste',1,false)">💊 Energy Capsule</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Galaxy','@teste',1,false)">🌌 Galaxy</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Whistle','@teste',1,false)">🎵 Whistle</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Guitar','@teste',1,false)">🎸 Guitar</button>
+          <button class="btn btn-outline" onclick="onGiftReceived('Hat and Mustache','@teste',1,false)">🎩 Hat and Mustache</button>
+        </div>
+        <button class="btn btn-outline btn-full" onclick="diagnosePowerup()" style="margin-top:4px;font-size:0.65rem">
+          🔍 Diagnóstico Power-up
+        </button>
+        <div class="test-gifts" style="margin-top:4px">
+        </div>
+        <!-- filled dynamically from POWERUPS list -->
+        <div id="pu-test-btns" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div>
+        <button class="btn btn-outline btn-full" onclick="onChatReceived('@fulano','Vai logo! 🔥')" style="margin-top:4px">
+          💬 Testar Chat
+        </button>
+      </div>
+
+    </div><!-- /sidebar-controls -->
+
+    <!-- Log — always at bottom, always visible -->
+    <div id="log-section">
+      <div class="log-header">
+        <span>📋 Log ao vivo</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span id="viewers-count" style="color:var(--yellow);font-size:0.62rem"></span>
+          <button class="btn btn-outline" onclick="clearLog()" style="padding:2px 6px;font-size:0.6rem">limpar</button>
+        </div>
+      </div>
+      <div id="log"></div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /main -->
+
+<!-- Status bar -->
+<div id="status-bar">
+  <span class="sdot" id="emu-dot"></span>
+  <span id="emu-status">Emulador: aguardando ROM</span>
+  <span style="flex:1"></span>
+  <span class="sdot" id="tts-dot" style="background:var(--purple)"></span>
+  <span>TTS</span>
+  <span style="color:var(--border)">|</span>
+  <span id="gift-count">0 gifts</span>
+</div>
+
+<!-- ── Editor Modal ────────────────────────────────────────── -->
+<div id="editor-overlay" onclick="if(event.target===this)closeEditor()">
+  <div id="editor-box">
+    <div id="editor-head">
+      <h2>🎮 EDITOR</h2>
+      <select class="preset-select" id="editor-preset-select"
+              style="width:auto;margin:0;min-width:170px"
+              onchange="applyPreset(this.value,true);updateDeletePresetBtn()">
+      </select>
+      <button class="btn btn-outline" onclick="closeEditor()" style="margin-left:auto">✕</button>
+    </div>
+
+    <div class="ed-tabs">
+      <button class="ed-tab active" onclick="switchTab('gifts',this)">🎁 Gifts</button>
+      <button class="ed-tab"        onclick="switchTab('likes',this)">💜 Likes</button>
+      <button class="ed-tab"        onclick="switchTab('keywords',this)">💬 Palavras-chave</button>
+      <button class="ed-tab"        onclick="switchTab('powerups',this)">⭐ Power-ups</button>
+      <button class="ed-tab"        onclick="switchTab('banner',this)">🖼️ Banner</button>
+    </div>
+
+    <div id="editor-body-wrap">
+
+      <!-- ── Gifts panel ── -->
+      <div id="panel-gifts" class="ed-panel active">
+        <div class="editor-help">
+          <b>Sequência:</b> <code>KEY:holdMs:pausaMs</code> por espaços &nbsp;|&nbsp;
+          <b>Especiais:</b> <code>REWIND:2500</code> &nbsp; <code>SLOWMO:5000</code> &nbsp; <code>RESET</code> &nbsp;|&nbsp;
+          <b>Keys:</b> B Y A X L R START SELECT UP DOWN LEFT RIGHT
+        </div>
+        <table id="editor-table">
+          <thead><tr>
+            <th style="width:110px">Gift (nome)</th>
+            <th style="width:100px">Emoji + Label</th>
+            <th>Ação</th>
+            <th style="width:170px">Fala (TTS)</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="editor-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- ── Likes panel ── -->
+      <div id="panel-likes" class="ed-panel">
+        <div class="editor-help">
+          Dispara uma ação a cada <b>N likes acumulados</b> na live. &nbsp;|&nbsp;
+          <b>Ação:</b> <code>REWIND:2500</code> &nbsp; <code>SLOWMO:5000</code> &nbsp; ou sequência de teclas
+        </div>
+        <table id="likes-table">
+          <thead><tr>
+            <th style="width:100px">A cada N likes</th>
+            <th style="width:110px">Emoji + Label</th>
+            <th>Ação</th>
+            <th style="width:170px">Fala (TTS)</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="likes-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- ── Keywords panel ── -->
+      <div id="panel-keywords" class="ed-panel">
+        <div class="editor-help">
+          Dispara quando uma <b>palavra ou frase</b> aparecer no chat. Cooldown de 10s por palavra. &nbsp;|&nbsp;
+          <b>Ação:</b> <code>REWIND:2500</code> &nbsp; <code>SLOWMO:5000</code> &nbsp; ou sequência de teclas
+        </div>
+        <table id="kw-table">
+          <thead><tr>
+            <th style="width:120px">Palavra / frase</th>
+            <th style="width:110px">Emoji + Label</th>
+            <th>Ação</th>
+            <th style="width:170px">Fala (TTS)</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="kw-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- ── Power-ups panel ── -->
+      <div id="panel-powerups" class="ed-panel">
+        <div class="editor-help">
+          Escreve diretamente na RAM do jogo via <b>save state patch</b> (sem depender do sistema de cheats). &nbsp;|&nbsp;
+          <b>Código:</b> <code>ENDEREÇO:VALOR</code> em hex &nbsp;|&nbsp; ex: <code>7E00CE:02</code> = Fire Mario &nbsp;|&nbsp;
+          Ative via gift/keyword com ação <code>POWERUP:0</code>, <code>POWERUP:1</code>…<br>
+          Endereços variam por ROM e região — <a href="https://www.gamefaqs.com" target="_blank" style="color:var(--purple)">GameFAQs</a> tem tabelas de RAM para a maioria dos jogos.
+        </div>
+        <table id="pu-table">
+          <thead><tr>
+            <th style="width:28px">#</th>
+            <th style="width:140px">Nome</th>
+            <th style="width:130px">Código (ADDR:VAL hex)</th>
+            <th style="width:100px">Emoji + Label</th>
+            <th style="width:160px">Fala (TTS)</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="pu-rows"></tbody>
+        </table>
+        <div style="margin-top:8px;font-size:0.68rem;color:var(--muted)">
+          Use <code>POWERUP:0</code>, <code>POWERUP:1</code>… como ação em Gifts, Likes ou Keywords.<br>
+          O cheat é ativado por <b>8s</b> e desativado automaticamente.
+        </div>
+      </div>
+
+      <!-- ── Banner panel ── -->
+      <div id="panel-banner" class="ed-panel">
+        <div class="editor-help">
+          Imagem de fundo exibida no rodapé do jogo durante os gifts. Presets padrão buscam de
+          <code>assets/banner-{preset}.png</code> — crie os arquivos PNG na pasta <code>assets/</code>
+          ou faça upload de uma imagem personalizada abaixo (salva no preset do usuário).<br>
+          <b>Recomendado:</b> PNG transparente ou decorativo, proporção ~10:1 (ex: 3000×300px).
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">
+          <!-- Upload -->
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:0.65rem;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Imagem personalizada</div>
+            <div id="banner-drop-zone"
+                 onclick="document.getElementById('banner-input').click()"
+                 ondragover="event.preventDefault();this.style.borderColor='var(--purple)'"
+                 ondragleave="this.style.borderColor=''"
+                 ondrop="event.preventDefault();this.style.borderColor='';handleBannerUpload(event.dataTransfer.files[0])">
+              <input type="file" id="banner-input" accept="image/*" style="display:none"
+                     onchange="handleBannerUpload(this.files[0])">
+              <div style="font-size:1.4rem;margin-bottom:4px">📁</div>
+              <div>Clique ou arraste aqui</div>
+              <div style="font-size:0.62rem;margin-top:3px;color:var(--muted)">PNG, JPG, GIF…</div>
+            </div>
+            <button class="btn btn-red" id="banner-clear-btn" onclick="clearBannerImage()"
+                    style="display:none;margin-top:6px;font-size:0.7rem">✕ Remover imagem</button>
+          </div>
+          <!-- Preview -->
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:0.65rem;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Prévia</div>
+            <div id="banner-preview-wrap"
+                 style="display:none;border:1px solid var(--border);border-radius:4px;overflow:hidden">
+              <img id="banner-preview" alt="banner preview"
+                   style="width:100%;height:auto;display:block;max-height:110px;object-fit:cover">
+            </div>
+            <div id="banner-no-image"
+                 style="color:var(--muted);font-size:0.72rem;padding:10px 0">Nenhuma imagem personalizada</div>
+            <div id="banner-asset-note"
+                 style="display:none;font-size:0.65rem;color:var(--muted);margin-top:4px;line-height:1.5">
+              ℹ️ Usando imagem padrão do preset:<br>
+              <code id="banner-asset-path" style="color:var(--purple)"></code>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:0.67rem;color:var(--muted);line-height:1.6">
+          ℹ️ A altura do banner é definida automaticamente pela proporção da imagem.<br>
+          Imagens mais largas (ex: 3000×300) resultam em banners mais finos.
+        </div>
+      </div>
+
+    </div><!-- /editor-body-wrap -->
+
+    <div id="editor-foot">
+      <button class="btn btn-outline" id="ed-add-btn" onclick="addEditorRow()">＋ Adicionar</button>
+      <span style="flex:1"></span>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="text" id="preset-name-input" placeholder="Nome do preset…"
+               style="width:148px;flex:none;font-size:0.72rem;padding:4px 8px;
+                      background:var(--surface2);border:1px solid var(--border);
+                      color:var(--text);border-radius:4px;font-family:inherit;outline:none"
+               title="Nome para salvar como preset">
+        <button class="btn btn-purple" onclick="saveAsPreset()" title="Salvar mapeamento atual como preset nomeado">★ Salvar preset</button>
+        <button class="btn btn-red" id="delete-preset-btn" onclick="deleteCurrentPreset()"
+                style="display:none;padding:5px 9px" title="Excluir este preset">🗑️</button>
+      </div>
+      <button class="btn btn-green" onclick="saveEditor()">✓ Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/socket.io.min.js"></script>
+<script src="lib/nostalgist.umd.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

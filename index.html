@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebTikTokLiveSNES — Emulador SNES × TikTok Live</title>
+<link rel="icon" type="image/png" href="assets/wtklsnes_logo.png">
+<link rel="apple-touch-icon" href="assets/wtklsnes_logo.png">
+<meta property="og:title" content="WebTikTokLiveSNES">
+<meta property="og:description" content="Emulador SNES no browser com gifts e chat do TikTok Live controlando o jogo em tempo real. Open source.">
+<meta property="og:image" content="assets/wtklsnes_logo.png">
+<style>
+  :root {
+    --bg: #0d0d14;
+    --surface: #16161f;
+    --surface2: #1e1e2e;
+    --border: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --tiktok: #fe2c55;
+    --tiktok2: #25f4ee;
+    --text: #e2e2f0;
+    --muted: #8888aa;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(13,13,20,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .nav-logo img { width: 32px; height: 32px; }
+  .nav-links { display: flex; gap: 24px; align-items: center; }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .btn-nav {
+    background: var(--accent);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-nav:hover { background: var(--accent2); transform: translateY(-1px); color: #fff; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 100px 24px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-glow-tiktok {
+    position: absolute;
+    bottom: 10%;
+    right: 10%;
+    width: 400px;
+    height: 300px;
+    background: radial-gradient(ellipse, rgba(254,44,85,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.35);
+    color: var(--accent2);
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-logo { width: 90px; height: 90px; margin-bottom: 24px; filter: drop-shadow(0 0 30px rgba(124,58,237,0.5)); }
+
+  h1 {
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+  h1 .highlight-purple { color: var(--accent2); }
+  h1 .highlight-tiktok {
+    background: linear-gradient(90deg, var(--tiktok), var(--tiktok2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 580px;
+    margin-bottom: 40px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(124,58,237,0.35);
+  }
+  .btn-primary:hover {
+    background: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(124,58,237,0.5);
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: background 0.2s, transform 0.15s, border-color 0.2s;
+  }
+  .btn-secondary:hover {
+    background: var(--surface2);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  /* ── DEMO PREVIEW ── */
+  .preview-wrap {
+    margin-top: 64px;
+    position: relative;
+    max-width: 860px;
+    width: 100%;
+  }
+  .preview-frame {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .preview-dot:nth-child(1) { background: #ff5f57; }
+  .preview-dot:nth-child(2) { background: #febc2e; }
+  .preview-dot:nth-child(3) { background: #28c840; }
+  .preview-url {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 0 8px;
+  }
+  .preview-body {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    min-height: 320px;
+  }
+  .preview-emu {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    flex-direction: column;
+    gap: 8px;
+    padding: 24px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .preview-emu-icon { font-size: 3.5rem; }
+  .preview-sidebar {
+    background: var(--surface2);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .preview-sidebar-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .gift-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    animation: slideIn 0.4s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .gift-icon { font-size: 1.1rem; }
+  .gift-text { color: var(--text); flex: 1; }
+  .gift-action { color: var(--accent2); font-weight: 600; font-size: 0.72rem; }
+
+  /* ── FEATURES ── */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+  .section-title {
+    text-align: center;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .section-sub {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 56px;
+    font-size: 1rem;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+  }
+  .feature-icon {
+    font-size: 2rem;
+    margin-bottom: 14px;
+    display: block;
+  }
+  .feature-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .feature-desc { color: var(--muted); font-size: 0.9rem; }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 32px;
+    position: relative;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .step-num {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .step-title { font-weight: 700; font-size: 0.95rem; }
+  .step-desc { color: var(--muted); font-size: 0.85rem; }
+
+  /* ── PRESETS ── */
+  .presets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .preset-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s;
+  }
+  .preset-card:hover { border-color: var(--accent); }
+  .preset-game { font-size: 1.5rem; }
+  .preset-name { font-weight: 700; font-size: 0.95rem; }
+  .preset-tag { color: var(--muted); font-size: 0.8rem; }
+
+  /* ── TECH STACK ── */
+  .tech-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  .tech-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.2s;
+  }
+  .tech-pill:hover { border-color: var(--accent); }
+
+  /* ── CTA ── */
+  .cta-section {
+    text-align: center;
+    padding: 100px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 300px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-section h2 { font-size: clamp(1.8rem, 3vw, 3rem); font-weight: 800; margin-bottom: 16px; }
+  .cta-section p { color: var(--muted); margin-bottom: 36px; font-size: 1.05rem; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: gap;
+    color: var(--muted);
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+  .footer-links { display: flex; gap: 20px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    nav { padding: 12px 16px; }
+    .nav-links a:not(.btn-nav) { display: none; }
+    .preview-body { grid-template-columns: 1fr; }
+    .preview-sidebar { display: none; }
+    footer { flex-direction: column; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <img src="assets/wtklsnes_logo.png" alt="Logo">
+    WebTikTokLiveSNES
+  </a>
+  <div class="nav-links">
+    <a href="#features">Recursos</a>
+    <a href="#how">Como funciona</a>
+    <a href="#presets">Presets</a>
+    <a href="ajuda.html">Ajuda</a>
+    <a href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">GitHub</a>
+    <a class="btn-nav" href="app.html">▶ Abrir App</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow-tiktok"></div>
+
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Open Source · Sem instalação · Roda no browser
+  </div>
+
+  <img class="hero-logo" src="assets/wtklsnes_logo.png" alt="WebTikTokLiveSNES Logo">
+
+  <h1>
+    Emulador <span class="highlight-purple">SNES</span><br>
+    no seu <span class="highlight-tiktok">TikTok Live</span>
+  </h1>
+
+  <p class="hero-sub">
+    Gifts, likes e palavras-chave do chat disparam ações no jogo em tempo real.
+    Transforme sua live em um jogo interativo — sem instalação, sem servidor próprio.
+  </p>
+
+  <div class="hero-actions">
+    <a class="btn-primary" href="app.html">
+      ▶ &nbsp;Abrir o App
+    </a>
+    <a class="btn-secondary" href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">
+      ⭐ &nbsp;Ver no GitHub
+    </a>
+  </div>
+
+  <!-- Browser mockup -->
+  <div class="preview-wrap">
+    <div class="preview-frame">
+      <div class="preview-bar">
+        <span class="preview-dot"></span>
+        <span class="preview-dot"></span>
+        <span class="preview-dot"></span>
+        <span class="preview-url">webtiktoklive.github.io/app.html</span>
+      </div>
+      <div class="preview-body">
+        <div class="preview-emu">
+          <span class="preview-emu-icon">🎮</span>
+          <span>Emulador SNES rodando no browser</span>
+          <span style="font-size:0.75rem;margin-top:4px;color:#555">arraste a ROM .sfc para começar</span>
+        </div>
+        <div class="preview-sidebar">
+          <div class="preview-sidebar-title">🎁 Chat ao vivo</div>
+          <div class="gift-item">
+            <span class="gift-icon">🌹</span>
+            <span class="gift-text">@usuario enviou Rosa</span>
+            <span class="gift-action">▼ agachou</span>
+          </div>
+          <div class="gift-item" style="animation-delay:0.3s">
+            <span class="gift-icon">⏪</span>
+            <span class="gift-text">@fã enviou Rewind</span>
+            <span class="gift-action">⏪ rewind</span>
+          </div>
+          <div class="gift-item" style="animation-delay:0.6s">
+            <span class="gift-icon">⭐</span>
+            <span class="gift-text">@viewer enviou Star</span>
+            <span class="gift-action">⭐ power-up</span>
+          </div>
+          <div class="gift-item" style="animation-delay:0.9s">
+            <span class="gift-icon">💜</span>
+            <span class="gift-text">@fiel deu 100 likes</span>
+            <span class="gift-action">🔥 combo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <h2 class="section-title">Por que usar?</h2>
+  <p class="section-sub">Uma ferramenta completa para lives interativas com retrogames</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🎮</span>
+      <div class="feature-title">Emulador SNES completo</div>
+      <div class="feature-desc">RetroArch compilado em WebAssembly via Nostalgist.js. Roda qualquer ROM .sfc / .smc diretamente no browser, sem plugin ou extensão.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎁</span>
+      <div class="feature-title">Gifts → Teclas em tempo real</div>
+      <div class="feature-desc">Cada gift do TikTok dispara uma sequência de teclas configurável no jogo. Defina hold time, pause e combos por nome de gift.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💬</span>
+      <div class="feature-title">Palavras-chave no chat</div>
+      <div class="feature-desc">Detecta frases específicas no chat ao vivo e aciona comandos — ideal para votações, macetes ativados por audiência e easter eggs.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💜</span>
+      <div class="feature-title">Triggers por likes</div>
+      <div class="feature-desc">Acumula likes por usuário e dispara ações em milestones. Recompense os fãs mais engajados com power-ups no jogo.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⏪</span>
+      <div class="feature-title">Rewind & Slow Motion</div>
+      <div class="feature-desc">Gifts especiais ativam o rewind nativo do RetroArch (buffer de 64 MB) ou reduzem a velocidade do jogo por alguns segundos.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⭐</span>
+      <div class="feature-title">Power-ups via RAM</div>
+      <div class="feature-desc">Escreve diretamente na WRAM do SNES para aplicar cheats instantâneos (vida, munição, items) sem pausar o jogo.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔊</span>
+      <div class="feature-title">TTS em português</div>
+      <div class="feature-desc">Narração por voz nativa do browser (Web Speech API) em pt-BR para anunciar gifts e eventos ao vivo para o streamer.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">✏️</span>
+      <div class="feature-title">Editor visual de presets</div>
+      <div class="feature-desc">Interface integrada para mapear gifts, likes, palavras-chave e power-ups sem editar código. Salva automaticamente no browser.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔓</span>
+      <div class="feature-title">100% open source</div>
+      <div class="feature-desc">HTML + CSS + JS estático, sem bundler, sem framework, sem back-end próprio. Hospede no GitHub Pages em 2 minutos.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="how-section" id="how">
+  <div class="section">
+    <h2 class="section-title">Como funciona</h2>
+    <p class="section-sub">Em 4 passos simples você já está ao vivo</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Abra o app</div>
+        <div class="step-desc">Acesse <strong>app.html</strong> no browser — funciona no Chrome, Edge e Firefox. Sem instalação.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Carregue a ROM</div>
+        <div class="step-desc">Arraste um arquivo <code style="background:#ffffff10;padding:1px 5px;border-radius:4px">.sfc</code> ou <code style="background:#ffffff10;padding:1px 5px;border-radius:4px">.smc</code> para a área do emulador.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Conecte ao TikTok</div>
+        <div class="step-desc">Cole a URL do Zerody OBS ou seu <code style="background:#ffffff10;padding:1px 5px;border-radius:4px">@username</code> + token e clique em Conectar.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Vá ao vivo!</div>
+        <div class="step-desc">Gifts e chat do TikTok começam a controlar o jogo automaticamente em tempo real.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRESETS ── -->
+<section class="section" id="presets">
+  <h2 class="section-title">Presets incluídos</h2>
+  <p class="section-sub">Mapeamentos prontos para os jogos mais populares — ou crie o seu</p>
+  <div class="presets-grid">
+    <div class="preset-card">
+      <span class="preset-game">🍄</span>
+      <div class="preset-name">Super Mario Bros 3</div>
+      <div class="preset-tag">SMB3 All-Stars / World</div>
+    </div>
+    <div class="preset-card">
+      <span class="preset-game">🎮</span>
+      <div class="preset-name">Genérico</div>
+      <div class="preset-tag">Qualquer jogo SNES</div>
+    </div>
+    <div class="preset-card" style="border-style:dashed">
+      <span class="preset-game">✏️</span>
+      <div class="preset-name">Seu preset</div>
+      <div class="preset-tag">Crie e salve o seu</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TECH ── -->
+<section class="section" style="padding-top:0">
+  <h2 class="section-title">Tecnologias</h2>
+  <p class="section-sub">Stack zero-dependência — leve, auditável, fácil de hospedar</p>
+  <div class="tech-list">
+    <div class="tech-pill">🎮 Nostalgist.js (RetroArch WASM)</div>
+    <div class="tech-pill">🔴 Zerody TikTok bridge</div>
+    <div class="tech-pill">🔊 Web Speech API (TTS)</div>
+    <div class="tech-pill">⚡ Socket.IO</div>
+    <div class="tech-pill">🌐 HTML · CSS · JS puro</div>
+    <div class="tech-pill">📦 GitHub Pages ready</div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <h2>Pronto para experimentar?</h2>
+  <p>Sem cadastro, sem servidor, sem custo. Abra o app e comece agora.</p>
+  <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+    <a class="btn-primary" href="app.html">▶ &nbsp;Abrir o App</a>
+    <a class="btn-secondary" href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">⭐ &nbsp;Star no GitHub</a>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <span>© 2025 WebTikTokLiveSNES — open source sob licença MIT</span>
+  <div class="footer-links">
+    <a href="app.html">App</a>
+    <a href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://nostalgist.js.org" target="_blank" rel="noopener">Nostalgist.js</a>
+    <a href="https://tiktok-chat-reader.zerody.one" target="_blank" rel="noopener">Zerody</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,442 @@
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --green: #00ff88;
+    --purple: #a855f7;
+    --pink: #ff3366;
+    --yellow: #ffaa00;
+    --text: #e0e0e0;
+    --muted: #666;
+    --border: #2a2a3a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  #header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--purple);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    height: 38px;
+  }
+  #header h1 { font-size: 0.88rem; color: var(--green); text-shadow: 0 0 8px var(--green); letter-spacing: 2px; white-space: nowrap; }
+  #header-logo { height: 30px; width: auto; display: block; flex-shrink: 0; }
+  .blink { animation: blink 1.4s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── Main ── */
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Emulator ── */
+  #emulator-panel {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: #000; position: relative; min-width: 0;
+  }
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
+    pointer-events: none; z-index: 2;
+  }
+  #emulator-wrap {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  /* game-area shrinks when banner is present */
+  #game-area {
+    flex: 1; min-height: 0;
+    position: relative;
+    width: 100%; overflow: hidden;
+    background: #000;
+  }
+  #nostalgist-container { width: 100%; height: 100%; display: none; }
+  /* Nostalgist renomeia o id do canvas para "canvas" ao iniciar — por isso usamos
+     o seletor por container, não por id, para o CSS continuar aplicando */
+  #nostalgist-container canvas {
+    display: block;          /* corrige o warning "Canvas should not use display:inline" */
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* ── Blackout overlay ── */
+  #blackout-overlay {
+    display: none;
+    position: absolute; inset: 0; z-index: 50;
+    background: #000;
+  }
+
+  /* ── Splash overlay ── */
+  #splash-overlay {
+    display: none;
+    position: absolute; inset: 0; z-index: 49;
+    background: rgba(0, 25, 50, 0.18);
+    backdrop-filter: blur(5px) brightness(0.78) saturate(1.4);
+  }
+  #splash-canvas { display: block; width: 100%; height: 100%; }
+
+  /* ── Start screen ── */
+  #start-screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; padding: 24px;
+  }
+  #start-screen > * { max-width: 400px; width: 100%; }
+  .crt-logo { font-size: clamp(1.4rem, 4vw, 2.8rem); color: var(--green); text-shadow: 0 0 20px var(--green), 0 0 40px var(--green); letter-spacing: 4px; font-weight: bold; }
+  .start-logo { width: clamp(140px, 35%, 220px); height: auto; filter: drop-shadow(0 0 16px rgba(0,255,136,0.35)); }
+  #start-screen p { color: var(--muted); font-size: 0.8rem; line-height: 1.6; }
+  .rom-info { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 0.74rem; color: var(--muted); text-align: left; line-height: 1.9; width: 100%; }
+  .rom-info span { color: var(--purple); }
+  #rom-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; font-size: 0.78rem; color: var(--muted); width: 100%; }
+  #rom-drop:hover, #rom-drop.drag-over { border-color: var(--purple); background: rgba(168,85,247,.05); color: var(--purple); }
+  #rom-drop input { display: none; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 290px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    /* no min-width — allows collapsing to 0 */
+    transition: width .28s cubic-bezier(.4,0,.2,1),
+                border-color .28s;
+  }
+  #sidebar.collapsed { width: 0; border-left-color: transparent; }
+
+  /* ── Sidebar toggle ear ── */
+  /* Lives inside #emulator-panel (position:relative), always visible at right edge */
+  #sidebar-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 52px;
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 5px 0 0 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1;
+    z-index: 20;
+    user-select: none;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  #sidebar-toggle:hover { background: var(--surface2); color: var(--green); border-color: var(--purple); }
+
+  /* ── Watermark ── */
+  #watermark {
+    display: none; /* shown when emulator starts, same as #nostalgist-container */
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    z-index: 15;
+    opacity: 0.48;
+    pointer-events: none;
+    mix-blend-mode: screen; /* fundo branco do PNG desaparece sobre o canvas escuro */
+    transition: opacity .3s;
+  }
+  #watermark:hover { opacity: 0.75; }
+
+  /* ── Rewind button ── */
+  #rewind-btn {
+    display: none; /* shown when emulator starts */
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background: rgba(10,10,15,.82);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1.4rem;
+    padding: 10px 22px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s, border-color .15s, transform .1s;
+    backdrop-filter: blur(4px);
+  }
+  #rewind-btn:hover { border-color: var(--purple); }
+  #rewind-btn.rewinding {
+    background: rgba(168,85,247,.25);
+    border-color: var(--purple);
+    box-shadow: 0 0 16px rgba(168,85,247,.5);
+    transform: translateX(-50%) scale(1.08);
+  }
+  #sidebar-controls { overflow-y: auto; flex: 0 0 auto; max-height: calc(100% - 160px); }
+  #sidebar-controls::-webkit-scrollbar { width: 3px; }
+  #sidebar-controls::-webkit-scrollbar-thumb { background: var(--border); }
+  .sidebar-section { padding: 9px 11px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sidebar-section > label { display: block; font-size: 0.63rem; color: var(--green); letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; }
+
+  /* ── Inputs ── */
+  .input-row { display: flex; gap: 5px; align-items: center; }
+  input[type=text], textarea {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 8px; font-family: inherit; font-size: 0.8rem; border-radius: 4px; outline: none; transition: border-color .2s;
+  }
+  input[type=text]:focus, textarea:focus { border-color: var(--purple); }
+  textarea { resize: none; height: 46px; font-size: 0.7rem; line-height: 1.4; }
+
+  /* ── Buttons ── */
+  .btn { padding: 5px 10px; border: none; border-radius: 4px; font-family: inherit; font-size: 0.73rem; cursor: pointer; letter-spacing: 0.5px; transition: all .15s; white-space: nowrap; }
+  .btn-green  { background: var(--green);  color: #000; font-weight: bold; }
+  .btn-purple { background: var(--purple); color: #fff; }
+  .btn-pink   { background: var(--pink);   color: #fff; }
+  .btn-red    { background: #cc2244;       color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--purple); color: var(--purple); }
+  .btn-green:hover  { box-shadow: 0 0 12px rgba(0,255,136,.5); }
+  .btn-purple:hover { box-shadow: 0 0 12px rgba(168,85,247,.5); }
+  .btn-full { width: 100%; margin-top: 5px; }
+  .btn-big { padding: 12px 24px; font-size: 0.92rem; border-radius: 8px; letter-spacing: 2px; box-shadow: 0 0 28px rgba(0,255,136,.4); }
+
+  /* ── Modal editor ── */
+  #editor-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.75); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center;
+  }
+  #editor-overlay.open { display: flex; }
+  #editor-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; width: min(820px, 96vw); max-height: 88vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #editor-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  #editor-head h2 { font-size: 0.88rem; color: var(--green); letter-spacing: 2px; flex: 1; }
+  #editor-body-wrap { flex: 1; overflow-y: auto; padding: 12px; }
+  #editor-body-wrap::-webkit-scrollbar { width: 4px; }
+  #editor-body-wrap::-webkit-scrollbar-thumb { background: var(--border); }
+  .editor-help {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font-size: 0.68rem; color: var(--muted); margin-bottom: 10px; line-height: 1.7;
+  }
+  .editor-help b { color: var(--green); }
+  #editor-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  #editor-table th {
+    text-align: left; padding: 5px 7px; border-bottom: 1px solid var(--border);
+    color: var(--green); font-size: 0.63rem; letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  #editor-table td { padding: 3px 4px; vertical-align: middle; }
+  #editor-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .editor-input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 7px; font-family: inherit; font-size: 0.7rem; border-radius: 3px;
+    outline: none; width: 100%;
+  }
+  .editor-input:focus { border-color: var(--purple); }
+  .editor-input.seq { font-family: monospace; }
+  #editor-foot {
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    background: var(--surface2);
+  }
+  /* ── Editor tabs ── */
+  .ed-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-shrink: 0; }
+  .ed-tab {
+    padding: 7px 16px; cursor: pointer; font-size: 0.72rem; background: transparent;
+    border: none; color: var(--muted); border-bottom: 2px solid transparent;
+    font-family: inherit; letter-spacing: 1px; transition: color .15s;
+  }
+  .ed-tab:hover { color: var(--text); }
+  .ed-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .ed-panel { display: none; }
+  .ed-panel.active { display: block; }
+  /* Preset select */
+  .preset-select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 5px 7px; font-family: inherit; font-size: 0.72rem;
+    border-radius: 4px; outline: none; margin-bottom: 6px; cursor: pointer;
+  }
+  .preset-select:focus { border-color: var(--purple); }
+
+  /* ── Connection status indicator ── */
+  .conn-status {
+    display: flex; align-items: center; gap: 7px; margin-top: 6px;
+    padding: 6px 8px; border-radius: 4px; background: var(--surface2);
+    font-size: 0.7rem; border: 1px solid var(--border);
+  }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--muted); transition: background .3s; }
+  .conn-dot.connecting { background: var(--yellow); animation: pulse 0.9s ease-in-out infinite; }
+  .conn-dot.connected   { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+  .conn-dot.error       { background: var(--pink);   box-shadow: 0 0 6px var(--pink); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .conn-text { flex: 1; color: var(--muted); line-height: 1.3; }
+  .conn-text b { color: var(--text); }
+
+  /* ── URL paste helper ── */
+  .url-hint { font-size: 0.62rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .url-hint span { color: var(--purple); cursor: pointer; text-decoration: underline; }
+
+  /* ── Gift map ── */
+  .gift-map { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; font-size: 0.65rem; }
+  .gift-row { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 4px 7px; display: flex; flex-direction: column; gap: 1px; }
+  .gift-name { color: var(--green); font-weight: bold; }
+  .gift-key  { color: var(--purple); font-size: 0.6rem; }
+
+  /* ── Test gifts ── */
+  .test-gifts { display: flex; flex-wrap: wrap; gap: 4px; }
+  .test-gifts .btn { font-size: 0.67rem; padding: 4px 8px; }
+
+  /* ── Controls text ── */
+  .ctrl-text { font-size: 0.65rem; color: var(--muted); line-height: 1.65; margin-bottom: 5px; }
+  .ctrl-text b { color: var(--text); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--border); border-radius: 2px; outline: none; margin-top: 3px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--purple); cursor: pointer; }
+
+  /* ── Log section ── */
+  #log-section { flex: 1; min-height: 160px; display: flex; flex-direction: column; overflow: hidden; border-top: 1px solid var(--border); }
+  .log-header { padding: 5px 11px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: var(--surface2); }
+  .log-header span { font-size: 0.63rem; color: var(--green); letter-spacing: 2px; text-transform: uppercase; }
+  #log { flex: 1; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 2px; }
+  #log::-webkit-scrollbar { width: 3px; }
+  #log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .log-entry { background: var(--surface2); border-left: 3px solid var(--border); border-radius: 0 3px 3px 0; padding: 3px 7px; font-size: 0.67rem; line-height: 1.4; animation: slideIn .12s ease; flex-shrink: 0; }
+  @keyframes slideIn { from { opacity:0; transform:translateX(8px); } to { opacity:1; transform:translateX(0); } }
+  .log-entry.gift { border-color: var(--green); }
+  .log-entry.chat { border-color: var(--purple); }
+  .log-entry.sys  { border-color: var(--pink); }
+  .log-entry.like { border-color: var(--yellow); }
+  .ts   { color: var(--muted); font-size: 0.6rem; }
+  .user { color: var(--purple); font-weight: bold; }
+  .gname { color: var(--green); font-weight: bold; }
+  .kinfo { color: var(--yellow); }
+
+  /* ── Status bar ── */
+  #status-bar { background: var(--surface); border-top: 1px solid var(--border); padding: 0 12px; display: flex; align-items: center; gap: 10px; font-size: 0.63rem; color: var(--muted); flex-shrink: 0; height: 24px; }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .sdot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .sdot.err { background: var(--pink); }
+
+  /* ── Controller overlay (left 20% of banner) ── */
+  #controller-overlay {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 20%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 3px 8px;
+  }
+  #ctrl-svg { width: 100%; height: 100%; overflow: visible; }
+  #ctrl-svg text {
+    text-anchor: middle; dominant-baseline: central;
+    pointer-events: none; font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .ctrl-dpad-bg { fill: #0d0d0d; }
+  .ctrl-center  { fill: #141414; }
+  .ctrl-dpad    { fill: #343434; transition: fill .04s, filter .04s; }
+  .ctrl-dpad text { fill: #555; font-size: 5px; }
+  .ctrl-dpad.active  { fill: #ddd; filter: drop-shadow(0 0 4px #ffffffaa); }
+  .ctrl-dpad.active text { fill: #111; }
+  .ctrl-shldr   { fill: #303030; transition: fill .04s, filter .04s; }
+  .ctrl-shldr text { fill: #555; font-size: 7px; }
+  .ctrl-shldr.active { fill: #bbb; filter: drop-shadow(0 0 4px #bbbbbbaa); }
+  .ctrl-shldr.active text { fill: #111; }
+  .ctrl-meta    { fill: #2e2e2e; transition: fill .04s, filter .04s; }
+  .ctrl-meta text { fill: #555; font-size: 5px; }
+  .ctrl-meta.active  { fill: #aaa; filter: drop-shadow(0 0 4px #aaaaaaaa); }
+  .ctrl-meta.active text { fill: #111; }
+  .ctrl-face-y  { fill: #1a5c2e; transition: fill .04s, filter .04s; }
+  .ctrl-face-y text { fill: #3a9950; font-size: 8px; }
+  .ctrl-face-y.active { fill: #33dd55; filter: drop-shadow(0 0 6px #33dd5599); }
+  .ctrl-face-y.active text { fill: #0a2010; }
+  .ctrl-face-b  { fill: #6b5200; transition: fill .04s, filter .04s; }
+  .ctrl-face-b text { fill: #b08800; font-size: 8px; }
+  .ctrl-face-b.active { fill: #ffcc00; filter: drop-shadow(0 0 6px #ffcc0099); }
+  .ctrl-face-b.active text { fill: #3d2e00; }
+  .ctrl-face-a  { fill: #7a1c1c; transition: fill .04s, filter .04s; }
+  .ctrl-face-a text { fill: #cc3333; font-size: 8px; }
+  .ctrl-face-a.active { fill: #ff3333; filter: drop-shadow(0 0 6px #ff333399); }
+  .ctrl-face-a.active text { fill: #3d0000; }
+  .ctrl-face-x  { fill: #1a2e88; transition: fill .04s, filter .04s; }
+  .ctrl-face-x text { fill: #3366cc; font-size: 8px; }
+  .ctrl-face-x.active { fill: #4488ff; filter: drop-shadow(0 0 6px #4488ff99); }
+  .ctrl-face-x.active text { fill: #0a1440; }
+  .ctrl-body { fill: #181818; stroke: #2a2a2a; stroke-width: 1; }
+
+  /* ── Gift Banner — in-flow below game, not an overlay ── */
+  #gift-banner {
+    width: 100%;
+    flex-shrink: 0;
+    display: none;
+    overflow: hidden;
+    pointer-events: none;
+    position: relative;
+  }
+  #gift-banner-bg {
+    width: 100%;
+    height: auto;  /* natural aspect ratio — never distorted */
+    display: block;
+  }
+  #gift-banner-content {
+    position: absolute; left: 20%; top: 0; right: 0; bottom: 0;
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 14px;
+  }
+  #gift-banner-label {
+    font-size: 1.7rem; font-weight: bold; color: #fff;
+    text-shadow: 0 0 14px rgba(0,0,0,.95), 0 2px 6px rgba(0,0,0,.9);
+    letter-spacing: 1px; white-space: nowrap; line-height: 1;
+  }
+  #gift-banner-user {
+    font-size: 0.88rem; color: var(--purple);
+    text-shadow: 0 1px 4px rgba(0,0,0,.95);
+    white-space: nowrap;
+  }
+  .banner-pulse { animation: bannerPulse .22s ease; }
+  @keyframes bannerPulse { from { opacity: .35; } to { opacity: 1; } }
+
+  /* ── Banner editor panel ── */
+  #banner-drop-zone {
+    border: 2px dashed var(--border); border-radius: 6px;
+    padding: 20px 14px; text-align: center; cursor: pointer;
+    font-size: 0.73rem; color: var(--muted);
+    transition: border-color .2s, background .2s;
+  }
+  #banner-drop-zone:hover { border-color: var(--purple); background: rgba(168,85,247,.04); color: var(--purple); }
+
+  /* ── Key flash ── */
+  #key-flash {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(0,0,0,0.82); border: 2px solid var(--green); border-radius: 12px;
+    padding: 14px 32px; text-align: center;
+    pointer-events: none; opacity: 0; transition: opacity .1s; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 24px rgba(0,255,136,0.25), inset 0 0 40px rgba(0,255,136,0.04);
+  }
+  #key-flash.show { opacity: 1; }
+  #key-flash .kf-label {
+    font-size: 2.2rem; color: var(--green); text-shadow: 0 0 20px var(--green);
+    letter-spacing: 3px; font-weight: bold; line-height: 1;
+  }
+  #key-flash .kf-user {
+    font-size: 0.92rem; color: #ffffff; letter-spacing: 1px;
+    font-family: 'Courier New', monospace; font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+  }

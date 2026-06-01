@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuda — WebTikTokLiveSNES</title>
+<link rel="icon" type="image/png" href="assets/wtklsnes_logo.png">
+<style>
+  :root {
+    --bg: #0d0d14;
+    --surface: #16161f;
+    --surface2: #1e1e2e;
+    --border: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --tiktok: #fe2c55;
+    --tiktok2: #25f4ee;
+    --text: #e2e2f0;
+    --muted: #8888aa;
+    --radius: 10px;
+    --code-bg: #0a0a12;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(13,13,20,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .nav-logo img { width: 30px; height: 30px; }
+  .nav-links { display: flex; gap: 20px; align-items: center; }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .btn-nav {
+    background: var(--accent);
+    color: #fff !important;
+    padding: 7px 18px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn-nav:hover { background: var(--accent2); }
+
+  /* ── LAYOUT ── */
+  .page-wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 96px 24px 80px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* ── SIDEBAR TOC ── */
+  .toc {
+    position: sticky;
+    top: 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .toc-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .toc ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: block;
+    transition: color 0.2s, background 0.2s;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.sub { padding-left: 20px; font-size: 0.8rem; }
+
+  /* ── CONTENT ── */
+  .content { min-width: 0; }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .page-sub { color: var(--muted); margin-bottom: 48px; font-size: 1rem; }
+
+  .help-section {
+    margin-bottom: 56px;
+    scroll-margin-top: 80px;
+  }
+  .help-section h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .help-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 20px 0 8px;
+    color: var(--accent2);
+  }
+  .help-section p { color: var(--muted); margin-bottom: 12px; font-size: 0.92rem; }
+  .help-section p strong { color: var(--text); }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+  .step-body span { color: var(--muted); font-size: 0.88rem; }
+
+  /* Code blocks */
+  pre, code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-size: 0.83rem;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 10px 0 16px;
+    color: #c9d1d9;
+    line-height: 1.6;
+  }
+  code {
+    background: rgba(255,255,255,0.07);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 12px 0 20px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td code { font-size: 0.8rem; }
+  td:first-child { color: var(--accent2); font-weight: 500; }
+
+  /* Callouts */
+  .callout {
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin: 12px 0 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 0.88rem;
+  }
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--muted); flex: 1; }
+  .callout-body strong { color: var(--text); display: block; margin-bottom: 4px; }
+  .callout-info { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.3); }
+  .callout-warn { background: rgba(254,44,85,0.1); border: 1px solid rgba(254,44,85,0.3); }
+  .callout-tip  { background: rgba(37,244,238,0.07); border: 1px solid rgba(37,244,238,0.25); }
+
+  /* Key badges */
+  kbd {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-bottom: 2px solid #444;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--text);
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .page-wrap { grid-template-columns: 1fr; }
+    .toc { display: none; }
+    nav { padding: 12px 16px; }
+    .nav-links a:not(.btn-nav):not(:last-of-type) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-logo" href="index.html">
+    <img src="assets/wtklsnes_logo.png" alt="Logo">
+    WebTikTokLiveSNES
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Início</a>
+    <a href="index.html#features">Recursos</a>
+    <a href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">GitHub</a>
+    <a class="btn-nav" href="app.html">▶ Abrir App</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- ── TOC ── -->
+  <aside class="toc">
+    <div class="toc-title">Nesta página</div>
+    <ul>
+      <li><a href="#inicio">Primeiros passos</a></li>
+      <li><a href="#conectar">Conectar ao TikTok</a></li>
+      <li><a href="#gifts">Gifts → Ações</a></li>
+      <li><a href="#sequencias">Sequências de teclas</a></li>
+      <li><a href="#especiais">Ações especiais</a></li>
+      <li><a href="#likes">Triggers de likes</a></li>
+      <li><a href="#keywords">Palavras-chave</a></li>
+      <li><a href="#powerups">Power-ups (RAM)</a></li>
+      <li><a href="#presets">Presets</a></li>
+      <li><a href="#teclado">Teclado do emulador</a></li>
+      <li><a href="#tts">Narração TTS</a></li>
+      <li><a href="#tecnico">Requisitos técnicos</a></li>
+      <li><a href="#hospedar">Hospedar no GitHub Pages</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <main class="content">
+
+    <h1 class="page-title">❓ Ajuda</h1>
+    <p class="page-sub">Guia completo do WebTikTokLiveSNES — do primeiro acesso ao mapeamento avançado de gifts.</p>
+
+    <!-- ── PRIMEIROS PASSOS ── -->
+    <section class="help-section" id="inicio">
+      <h2>🚀 Primeiros passos</h2>
+      <p>O WebTikTokLiveSNES roda diretamente no browser — sem instalação, sem extensão. Você só precisa de uma ROM SNES e de estar ao vivo no TikTok.</p>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <strong>ROMs não estão incluídas</strong>
+          O emulador usa arquivos <code>.sfc</code> / <code>.smc</code> que você deve possuir legalmente. Use ROMs homebrew gratuitas ou arquivos de cartuchos que você já comprou.
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step-row">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Abra o app</strong>
+            <span>Acesse <a href="app.html" style="color:var(--accent2)">app.html</a> no Chrome ou Edge. O Firefox também funciona, mas o Chrome tem melhor suporte a TTS em pt-BR.</span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Carregue a ROM</strong>
+            <span>Arraste um arquivo <code>.sfc</code> / <code>.smc</code> para a área pontilhada, ou clique nela para abrir o seletor de arquivo. O emulador inicia automaticamente.</span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Conecte ao TikTok Live</strong>
+            <span>Cole a URL do Zerody OBS na sidebar (ou preencha <code>@username</code> + token) e clique <strong>Conectar</strong>. Você precisa estar ao vivo para receber eventos.</span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Escolha o preset do jogo</strong>
+            <span>Selecione o preset correto na sidebar (ex: mario, dk). Os gifts mapeados aparecem nos botões de teste logo abaixo.</span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Teste sem estar ao vivo</strong>
+            <span>Use os botões <strong>🧪 Testar Gifts</strong> para simular eventos e verificar se as teclas chegam ao emulador antes de ir ao ar.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CONECTAR ── -->
+    <section class="help-section" id="conectar">
+      <h2>🔴 Conectar ao TikTok Live</h2>
+      <p>A conexão usa o serviço <strong>Zerody</strong> como bridge para o chat ao vivo do TikTok (API não-oficial). Há dois modos:</p>
+
+      <h3>Modo URL completa (recomendado)</h3>
+      <p>Acesse <a href="https://tiktok-chat-reader.zerody.one" target="_blank" rel="noopener" style="color:var(--accent2)">tiktok-chat-reader.zerody.one</a>, faça o login e copie a URL da seção <strong>OBS Browser Source</strong>. Cole essa URL no campo da sidebar e clique <strong>Conectar</strong>.</p>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>Por que usar a URL completa?</strong>
+          O Zerody exige um captcha na primeira autenticação. Ao colar a URL já autenticada você pula esse passo e conecta diretamente.
+        </div>
+      </div>
+
+      <h3>Modo @username + token</h3>
+      <p>Preencha os campos <strong>@username</strong> e <strong>Token</strong> manualmente com os dados obtidos no painel do Zerody e clique <strong>Conectar</strong>.</p>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <strong>Você precisa estar ao vivo</strong>
+          O app conecta ao chat em tempo real. Se você não estiver transmitindo, a conexão será estabelecida, mas nenhum evento chegará.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── GIFTS ── -->
+    <section class="help-section" id="gifts">
+      <h2>🎁 Gifts → Ações</h2>
+      <p>Cada gift enviado no TikTok dispara uma ação no emulador. O mapeamento fica em <strong>✏️ Editar → aba Gifts</strong>. O nome do gift é normalizado automaticamente (minúsculas, sem acentos, sem símbolos) antes de buscar no mapa.</p>
+
+      <h3>Exemplo: gift "Rosa" → agachar no Mario</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Campo</th><th>Valor</th><th>Descrição</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Nome do gift</td><td><code>rosa</code></td><td>Normalizado: minúsculas, sem acentos</td></tr>
+            <tr><td>Sequência</td><td><code>DOWN:600</code></td><td>Segura ↓ por 600 ms</td></tr>
+            <tr><td>Label</td><td><code>🌹 Agachou!</code></td><td>Texto exibido no banner</td></tr>
+            <tr><td>TTS</td><td><code>Rosa! Mario agachou.</code></td><td>Narração falada em pt-BR</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Normalização de nomes</h3>
+      <p>O nome do gift passa por <code>normalizeGift()</code> antes da busca:</p>
+      <pre>"Interstellar ✨" → "interstellar"
+"Coração 💜"    → "coracao"
+"Rose"           → "rose"</pre>
+      <p>Use o nome normalizado como chave no mapeamento.</p>
+    </section>
+
+    <!-- ── SEQUÊNCIAS ── -->
+    <section class="help-section" id="sequencias">
+      <h2>⌨️ Sequências de teclas</h2>
+      <p>Uma sequência define quais botões do SNES são pressionados, por quanto tempo, e a pausa entre eles.</p>
+
+      <h3>Formato</h3>
+      <pre>TECLA:holdMs:pausaMs   TECLA2:holdMs   ...</pre>
+      <p><strong>holdMs</strong> — tempo em ms que a tecla fica pressionada (padrão: 100)<br>
+         <strong>pausaMs</strong> — pausa após soltar antes da próxima tecla (padrão: 80)</p>
+
+      <h3>Teclas disponíveis</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Alias</th><th>Botão SNES</th></tr></thead>
+          <tbody>
+            <tr><td><code>B</code></td><td>Botão B</td></tr>
+            <tr><td><code>Y</code></td><td>Botão Y</td></tr>
+            <tr><td><code>A</code></td><td>Botão A</td></tr>
+            <tr><td><code>X</code></td><td>Botão X</td></tr>
+            <tr><td><code>L</code></td><td>Gatilho L</td></tr>
+            <tr><td><code>R</code></td><td>Gatilho R</td></tr>
+            <tr><td><code>START</code></td><td>Start</td></tr>
+            <tr><td><code>SELECT</code></td><td>Select</td></tr>
+            <tr><td><code>UP</code> <code>DOWN</code> <code>LEFT</code> <code>RIGHT</code></td><td>D-pad</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Exemplos</h3>
+      <pre># Pular (B por 150ms)
+B:150
+
+# Agachar (↓ por 600ms)
+DOWN:600
+
+# Hadouken SF2: ↓ + ↘ + → + Soco forte
+DOWN:80:50 DOWN:80:50 RIGHT:80:50 Y:150
+
+# Combo com pausa longa entre teclas
+B:200:400 A:200:400 B:200</pre>
+    </section>
+
+    <!-- ── AÇÕES ESPECIAIS ── -->
+    <section class="help-section" id="especiais">
+      <h2>✨ Ações especiais</h2>
+      <p>Além de sequências de teclas, existem ações especiais configuradas pelo campo <code>special</code>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>special</th><th>Campo extra</th><th>Efeito</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>rewind</code></td>
+              <td><code>rewindMs</code> (ex: 2500)</td>
+              <td>Mantém a tecla de rewind pressionada por N ms — volta o jogo no tempo</td>
+            </tr>
+            <tr>
+              <td><code>slowmo</code></td>
+              <td><code>slowmoMs</code> (ex: 5000)</td>
+              <td>Ativa o slow motion nativo do RetroArch por N ms</td>
+            </tr>
+            <tr>
+              <td><code>reset</code></td>
+              <td>—</td>
+              <td>Reinicia o jogo (equivale a resetar o cartucho)</td>
+            </tr>
+            <tr>
+              <td><code>powerup</code></td>
+              <td><code>powerupIdx</code> (0, 1, 2…)</td>
+              <td>Aplica o power-up de índice N, escrevendo direto na WRAM</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>Rewind buffer</strong>
+          O rewind usa 64 MB de buffer do RetroArch — pode regredir até ~30 segundos dependendo do jogo.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── LIKES ── -->
+    <section class="help-section" id="likes">
+      <h2>💜 Triggers de likes</h2>
+      <p>O sistema acumula likes <em>por usuário</em> e dispara ações em milestones configuráveis. Útil para recompensar fãs recorrentes.</p>
+
+      <h3>Configuração</h3>
+      <p>Em <strong>✏️ Editar → aba Likes</strong>, defina o threshold e a sequência para cada trigger:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Campo</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>Likes</td><td>Threshold acumulado por usuário (ex: 50, 100, 500)</td></tr>
+            <tr><td>Sequência</td><td>Mesma sintaxe de gifts (ex: <code>B:150</code>)</td></tr>
+            <tr><td>Label / TTS</td><td>Texto exibido e narrado ao atingir o milestone</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          O contador é por usuário e por sessão — reinicia quando a página é recarregada.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PALAVRAS-CHAVE ── -->
+    <section class="help-section" id="keywords">
+      <h2>💬 Palavras-chave no chat</h2>
+      <p>Detecta frases específicas no chat ao vivo e dispara sequências. Tem cooldown de 10 segundos por palavra para evitar spam.</p>
+
+      <h3>Configuração</h3>
+      <p>Em <strong>✏️ Editar → aba Palavras-chave</strong>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Campo</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>Palavra/frase</td><td>Texto que será buscado no chat (case insensitive)</td></tr>
+            <tr><td>Sequência</td><td>Ação disparada quando a frase for detectada</td></tr>
+            <tr><td>Label / TTS</td><td>Feedback visual e de voz</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Exemplos de uso: votações (<code>vai direita</code> / <code>vai esquerda</code>), ativar cheats por comando da audiência, easter eggs escondidos.</p>
+    </section>
+
+    <!-- ── POWER-UPS ── -->
+    <section class="help-section" id="powerups">
+      <h2>⭐ Power-ups (cheats via RAM)</h2>
+      <p>Escreve diretamente na Work RAM do SNES para aplicar cheats instantâneos — sem pausar o jogo.</p>
+
+      <h3>Formato</h3>
+      <pre>ENDEREÇO:VALOR</pre>
+      <p>Ambos em hexadecimal. Exemplo: <code>7E00CE:02</code> (Fire Flower no SMB All-Stars).</p>
+
+      <h3>Como encontrar endereços</h3>
+      <p>Endereços SNES no formato <code>0x7Exxxx</code> → a posição na WRAM é <code>addr &amp; 0x1FFFF</code>. Consulte <a href="https://www.gamefaqs.com" target="_blank" rel="noopener" style="color:var(--accent2)">GameFAQs</a> ou o SNES RAM Map do seu jogo para os endereços corretos por ROM e região.</p>
+
+      <h3>Método de escrita</h3>
+      <p><strong>Método direto (preferido):</strong> <code>_retro_get_memory_data(2)</code> → ponteiro WRAM → <code>Module.HEAPU8[ptr + offset] = valor</code>. Instantâneo.</p>
+      <p><strong>Fallback automático:</strong> se o método direto não estiver disponível, salva o estado, faz patch binário no bloco RAM e recarrega.</p>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <strong>Valores variam por ROM e região</strong>
+          Um endereço válido para a versão americana pode ser diferente na versão japonesa ou europeia. Sempre teste antes da live.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PRESETS ── -->
+    <section class="help-section" id="presets">
+      <h2>🎮 Presets</h2>
+      <p>Presets são conjuntos pré-configurados de mapeamentos (gifts, likes, palavras-chave, power-ups) para jogos específicos.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Preset</th><th>Jogo</th><th>Observação</th></tr></thead>
+          <tbody>
+            <tr><td><code>mario</code></td><td>Super Mario Bros 3 All-Stars / World</td><td>Padrão ao abrir o app</td></tr>
+            <tr><td><code>dk</code></td><td>Donkey Kong Country</td><td>—</td></tr>
+            <tr><td><code>sf2</code></td><td>Street Fighter II Turbo</td><td>Inclui combos especiais</td></tr>
+            <tr><td><code>metroid</code></td><td>Super Metroid</td><td>—</td></tr>
+            <tr><td><code>generic</code></td><td>Qualquer jogo SNES</td><td>Mapeamento genérico</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Criar preset personalizado</h3>
+      <p>Abra <strong>✏️ Editar</strong>, faça as alterações desejadas e clique <strong>Salvar</strong>. Um preset <code>custom</code> é criado automaticamente (os presets embutidos não são sobrescritos). Para nomear, edite diretamente em <code>app.js</code> adicionando uma entrada em <code>PRESETS</code>.</p>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          Presets customizados são salvos no <code>localStorage</code> do browser. Limpar os dados do site apaga os presets personalizados.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TECLADO ── -->
+    <section class="help-section" id="teclado">
+      <h2>⌨️ Controles do teclado</h2>
+      <p>Quando o emulador está em foco, use o teclado para controlar o jogo:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tecla</th><th>Botão SNES</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>D-pad</td></tr>
+            <tr><td><kbd>Z</kbd></td><td>B</td></tr>
+            <tr><td><kbd>X</kbd></td><td>A</td></tr>
+            <tr><td><kbd>A</kbd></td><td>Y</td></tr>
+            <tr><td><kbd>S</kbd></td><td>X</td></tr>
+            <tr><td><kbd>Q</kbd></td><td>L</td></tr>
+            <tr><td><kbd>W</kbd></td><td>R</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Start</td></tr>
+            <tr><td><kbd>Shift</kbd></td><td>Select</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Funções especiais do emulador</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tecla</th><th>Função</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>R</kbd> (segurar)</td><td>Rewind (rebobinar)</td></tr>
+            <tr><td><kbd>E</kbd> (segurar)</td><td>Slow Motion</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── TTS ── -->
+    <section class="help-section" id="tts">
+      <h2>🔊 Narração TTS</h2>
+      <p>O app usa a <strong>Web Speech API</strong> nativa do browser para narrar eventos em português brasileiro.</p>
+
+      <h3>Ativação</h3>
+      <p>Por política dos browsers, o TTS só funciona após a primeira interação do usuário com a página (clique, tecla ou toque). Assim que você interagir, a voz será ativada automaticamente.</p>
+
+      <h3>Seleção de voz</h3>
+      <p>O app seleciona automaticamente uma voz <code>localService</code> em pt-BR. Vozes locais garantem funcionamento offline e evitam falhas silenciosas das vozes online do Google no Chrome macOS.</p>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <strong>Chrome macOS</strong>
+          As vozes online do Google (pt-BR) falham silenciosamente nesse ambiente. O app detecta isso e usa apenas vozes locais. Se nenhuma voz pt-BR local estiver disponível, o TTS será desativado automaticamente.
+        </div>
+      </div>
+
+      <h3>Personalizar o texto narrado</h3>
+      <p>Cada gift tem um campo <strong>TTS</strong> no editor. Deixe vazio para silenciar aquele gift. Use texto natural — o narrador usa a voz padrão pt-BR do sistema.</p>
+    </section>
+
+    <!-- ── TÉCNICO ── -->
+    <section class="help-section" id="tecnico">
+      <h2>🔧 Requisitos técnicos</h2>
+
+      <h3>Browser suportados</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Browser</th><th>Suporte</th><th>Observação</th></tr></thead>
+          <tbody>
+            <tr><td>Chrome / Edge</td><td>✅ Completo</td><td>Recomendado</td></tr>
+            <tr><td>Firefox</td><td>✅ Funcional</td><td>TTS pode variar</td></tr>
+            <tr><td>Safari</td><td>⚠️ Limitado</td><td>SharedArrayBuffer restrito</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>SharedArrayBuffer</h3>
+      <p>O Nostalgist.js usa Emscripten pthreads (threads WASM), que exige <code>SharedArrayBuffer</code>. Esse recurso só está disponível em contextos seguros com os headers:</p>
+      <pre>Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: credentialless</pre>
+
+      <p><strong>Rodando local</strong> — use <code>python3 server.py</code>. O servidor já adiciona esses headers.</p>
+      <p><strong>GitHub Pages</strong> — sem controle de headers. O <code>coi-serviceworker.js</code> intercepta as respostas via Service Worker e injeta os headers automaticamente.</p>
+      <p><strong>Não funciona via <code>file://</code></strong> — sempre use um servidor HTTP.</p>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          Se o emulador não carregar, abra o DevTools (F12) → Console. A mensagem <em>"SharedArrayBuffer is not defined"</em> indica que os headers não estão presentes.
+        </div>
+      </div>
+    </section>
+
+    <!-- ── HOSPEDAR ── -->
+    <section class="help-section" id="hospedar">
+      <h2>🌐 Hospedar no GitHub Pages</h2>
+      <p>O projeto é estático — basta fazer upload dos arquivos para um repositório público.</p>
+
+      <div class="steps">
+        <div class="step-row">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Crie um repositório público no GitHub</strong>
+            <span>Ex: <code>webtiktoklive</code></span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Faça o commit dos arquivos</strong>
+            <span><code>index.html</code>, <code>app.html</code>, <code>ajuda.html</code>, <code>style.css</code>, <code>app.js</code>, <code>coi-serviceworker.js</code>, <code>lib/</code>, <code>assets/</code></span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Ative o GitHub Pages</strong>
+            <span>Settings → Pages → Branch: main → / (root) → Save</span>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Aguarde ~1 minuto</strong>
+            <span>O site estará disponível em <code>https://seuusuario.github.io/webtiktoklive/</code></span>
+          </div>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px">git init
+git add index.html app.html ajuda.html style.css app.js coi-serviceworker.js lib/ assets/
+git commit -m "WebTikTokLiveSNES"
+git remote add origin https://github.com/SEU_USUARIO/webtiktoklive.git
+git push -u origin main</pre>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <span>© 2025 WebTikTokLiveSNES — open source sob licença MIT</span>
+  <div style="display:flex;gap:16px">
+    <a href="index.html">Início</a>
+    <a href="app.html">App</a>
+    <a href="https://github.com/kazuotm/webtiktoklive" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>
