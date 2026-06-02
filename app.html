@@ -56,6 +56,8 @@
         <div class="scanlines"></div>
         <div id="blackout-overlay"></div>
         <div id="splash-overlay"><canvas id="splash-canvas"></canvas></div>
+        <video id="unplug-video" src="assets/unplug.mp4" preload="auto" playsinline style="display:none"></video>
+        <canvas id="unplug-canvas"></canvas>
         <!-- Rewind button — visible only when emulator is running -->
         <button id="rewind-btn" title="Segurar para rebobinar"
                 onmousedown="startRewind()" onmouseup="stopRewind()" onmouseleave="stopRewind()"
@@ -92,6 +94,15 @@
         <!-- Watermark — visible only while emulator is running -->
         <div id="watermark">
           <img src="assets/wtklsnes_logo.png" alt="WebTikTokLiveSNES" width="90">
+        </div>
+
+        <!-- Effect timers overlay — bottom center -->
+        <div id="effect-timers"></div>
+
+        <!-- Top Likers overlay — bottom-right, above watermark -->
+        <div id="likes-overlay">
+          <div id="likes-overlay-title">❤️ Top Likers</div>
+          <div id="likes-leaderboard"></div>
         </div>
       </div>
 
@@ -268,6 +279,17 @@
             <input type="checkbox" id="tts-keywords" checked onchange="ttsCfg.keywords=this.checked;saveTtsCfg()">
             🔑 Palavras-chave
           </label>
+          <div style="margin-top:2px;padding-top:4px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <label style="font-size:0.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="likes-overlay-chk" checked onchange="setLikesOverlayVisible(this.checked)">
+              ❤️ Overlay Top Likers
+            </label>
+            <button class="btn btn-outline" onclick="resetLikeCounts()" title="Zerar contagem de likes" style="padding:2px 7px;font-size:0.6rem;color:var(--pink)">🗑 zerar</button>
+          </div>
+          <div id="likes-opacity-row" style="display:flex;align-items:center;gap:6px;padding-left:22px">
+            <span style="font-size:0.6rem;color:var(--muted);white-space:nowrap">Opacidade</span>
+            <input type="range" id="likes-overlay-opacity" min="0.15" max="1" step="0.05" value="0.72" oninput="setLikesOpacity(this.value)" style="flex:1">
+          </div>
         </div>
         <button class="btn btn-outline btn-full" style="margin-top:5px" onclick="toggleRomDrop()">📁 Carregar ROM</button>
       </div>

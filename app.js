@@ -257,6 +257,7 @@ function buildRetroarchConfig() {
     input_rewind: 'r',
     input_hold_slowmotion: 'e',
     input_hold_fast_forward: 'l',
+    fastforward_ratio: 2.0,
     // Desativa compressão RZIP nos save states para facilitar o patch direto
     savestate_file_compression: false,
   };
@@ -784,6 +785,30 @@ const kwCooldowns = {}; // keyword → último timestamp disparado
 const KW_COOLDOWN = 10000;
 
 const userLikeCounts = {}; // uniqueId → taps acumulados desse usuário
+let likesOverlayEnabled = true;
+let likesOverlayOpacity = 0.72;
+
+function resetLikeCounts() {
+  for (const k in userLikeCounts) delete userLikeCounts[k];
+  localStorage.removeItem(LS+'likecounts');
+  updateLikesLeaderboard();
+  addLog('sys', `<span class="ts">${ts()}</span> ❤️ Contagem de likes zerada.`);
+}
+
+function setLikesOverlayVisible(enabled) {
+  likesOverlayEnabled = enabled;
+  const opRow = document.getElementById('likes-opacity-row');
+  if (opRow) opRow.style.display = enabled ? 'flex' : 'none';
+  updateLikesLeaderboard();
+  localStorage.setItem('snestk_likesoverlay', JSON.stringify({ enabled, opacity: likesOverlayOpacity }));
+}
+
+function setLikesOpacity(val) {
+  likesOverlayOpacity = parseFloat(val);
+  const overlay = document.getElementById('likes-overlay');
+  if (overlay) overlay.style.opacity = likesOverlayOpacity;
+  localStorage.setItem('snestk_likesoverlay', JSON.stringify({ enabled: likesOverlayEnabled, opacity: likesOverlayOpacity }));
+}
 
 function actionToStr(action) {
   if (!action) return '';
@@ -1125,6 +1150,27 @@ function loadFromStorage() {
     if (bh) BANNER_HEIGHT = parseInt(bh) || 80;
     applyBannerToDOM();
     loadTtsCfg();
+    const lcRaw = localStorage.getItem(LS+'likecounts');
+    if (lcRaw) {
+      try {
+        Object.assign(userLikeCounts, JSON.parse(lcRaw));
+        updateLikesLeaderboard();
+      } catch(_) {}
+    }
+    const loRaw = localStorage.getItem('snestk_likesoverlay');
+    if (loRaw) {
+      try {
+        const lo = JSON.parse(loRaw);
+        likesOverlayEnabled = lo.enabled !== false;
+        likesOverlayOpacity = parseFloat(lo.opacity) || 0.72;
+        const chk = document.getElementById('likes-overlay-chk');
+        const sldr = document.getElementById('likes-overlay-opacity');
+        const opRow = document.getElementById('likes-opacity-row');
+        if (chk)  chk.checked = likesOverlayEnabled;
+        if (sldr) sldr.value  = likesOverlayOpacity;
+        if (opRow) opRow.style.display = likesOverlayEnabled ? 'flex' : 'none';
+      } catch(_) {}
+    }
     saveToStorage();
   } catch(_) { applyPreset('generic'); }
 }
@@ -1456,6 +1502,7 @@ function onLikeReceived(username, count) {
   const prev = userLikeCounts[username] || 0;
   const total = prev + count;
   userLikeCounts[username] = total;
+  localStorage.setItem(LS+'likecounts', JSON.stringify(userLikeCounts));
 
   addLog('like', `<span class="ts">${ts()}</span> <span class="user">${esc(username)}</span> ❤️ ×${count} <span style="color:var(--muted)">(esse usuário: ${total})</span>`);
 
@@ -1469,6 +1516,45 @@ function onLikeReceived(username, count) {
       triggerAction(strToAction(t.actionStr), trigLabel, t.tts, `${username} — ${milestone} taps`, 'like');
     }
   }
+  updateLikesLeaderboard();
+}
+
+function updateLikesLeaderboard() {
+  const overlay = document.getElementById('likes-overlay');
+  const el = document.getElementById('likes-leaderboard');
+  if (!el || !overlay) return;
+  const sorted = Object.entries(userLikeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (sorted.length === 0 || !likesOverlayEnabled) {
+    overlay.style.display = 'none';
+    return;
+  }
+  overlay.style.display = 'block';
+  overlay.style.opacity = likesOverlayOpacity;
+  const activeTriggers = LIKE_TRIGGERS.filter(t => t.every > 0);
+  el.innerHTML = sorted.map(([user, total], idx) => {
+    const rankColor = idx === 0 ? 'var(--yellow)' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--muted)';
+    let barHtml = '';
+    if (activeTriggers.length) {
+      let best = null, bestNext = Infinity;
+      for (const t of activeTriggers) {
+        const next = (Math.floor(total / t.every) + 1) * t.every;
+        if (next < bestNext) { bestNext = next; best = t; }
+      }
+      const pct = Math.round((total % best.every) / best.every * 100);
+      const rem = bestNext - total;
+      barHtml = `
+        <div class="liker-bar-wrap" title="${rem} likes para ${esc(best.label || '')}">
+          <div class="liker-bar" style="width:${pct}%"></div>
+        </div>
+        <div class="liker-hint">${rem}❤️ → ${esc(best.label || '?')}</div>`;
+    }
+    return `<div class="liker-row">
+      <div class="liker-topline">
+        <span class="liker-rank" style="color:${rankColor}">${idx + 1}</span>
+        <span class="liker-name">${esc(user)}</span>
+        <span class="liker-total">❤️${total}</span>
+      </div>${barHtml}</div>`;
+  }).join('');
 }
 
 // ─── TikTok Connection (Zerody Socket.IO) ────────────────────────────────────
@@ -1673,7 +1759,6 @@ async function startEmulator(romData, fileName) {
       retroarchConfig: buildRetroarchConfig(),
     });
     emuReady = true;
-    document.getElementById('rewind-btn').style.display = 'block';
     setEmuStatus('Rodando ✓', false, true);
     addLog('sys', `<span class="ts">${ts()}</span> ▶ Emulador rodando: <b>${esc(fileName)}</b>`);
     addLog('sys', `<span class="ts">${ts()}</span> ⏪ Rewind ativo — segure R ou o botão ⏪`);
@@ -1714,20 +1799,81 @@ function tryLoadDemo() {
 let rewindTimer     = null;
 let rewindStopTimer = null; // timeout ID para parar o rewind
 let rewindStopTs    = 0;    // timestamp (ms) em que o rewind termina (acumulado)
+let rewindTotal     = 0;
 let slowmoTimer     = null;
 let slowmoStopTimer = null; // timeout ID para parar o slow motion
 let slowmoStopTs    = 0;    // timestamp (ms) em que o slowmo termina (acumulado)
+let slowmoTotal     = 0;
 let fastmoTimer     = null;
 let fastmoStopTimer = null; // timeout ID para parar o fast forward
 let fastmoStopTs    = 0;    // timestamp (ms) em que o fastmo termina (acumulado)
+let fastmoTotal     = 0;
 let unplugTimer     = null;
 let unplugUntil     = 0;    // timestamp (ms) até quando o controle está desplugado
+let unplugTotal     = 0;
 let mirrorTimer     = null;
 let mirrorUntil     = 0;    // timestamp (ms) até quando esquerda/direita estão invertidas
+let mirrorTotal     = 0;
 let blackoutTimer   = null;
 let blackoutStopTs  = 0;    // timestamp (ms) em que o blackout termina (acumulado)
+let blackoutTotal   = 0;
 let splashTimer     = null;
 let splashStopTs    = 0;    // timestamp (ms) em que o splash termina (acumulado)
+let splashTotal     = 0;
+
+const EFFECT_DEFS = [
+  { key: 'rewind',   icon: '⏪', label: 'REWIND',   color: '#a855f7', getStop: () => rewindStopTs,   getTotal: () => rewindTotal   },
+  { key: 'slowmo',   icon: '🐢', label: 'SLOW MO',  color: '#38bdf8', getStop: () => slowmoStopTs,   getTotal: () => slowmoTotal   },
+  { key: 'fastmo',   icon: '⚡', label: 'FAST FWD', color: '#fb923c', getStop: () => fastmoStopTs,   getTotal: () => fastmoTotal   },
+  { key: 'unplug',   icon: '🎮', label: 'UNPLUG',   color: '#f43f5e', getStop: () => unplugUntil,    getTotal: () => unplugTotal   },
+  { key: 'mirror',   icon: '🪞', label: 'MIRROR',   color: '#facc15', getStop: () => mirrorUntil,    getTotal: () => mirrorTotal   },
+  { key: 'blackout', icon: '⬛', label: 'BLACKOUT', color: '#94a3b8', getStop: () => blackoutStopTs, getTotal: () => blackoutTotal },
+  { key: 'splash',   icon: '💧', label: 'SPLASH',   color: '#06b6d4', getStop: () => splashStopTs,   getTotal: () => splashTotal   },
+];
+
+let _effectTimerRaf = null;
+
+function tickEffectTimers() {
+  const container = document.getElementById('effect-timers');
+  if (!container) { _effectTimerRaf = null; return; }
+  const now = Date.now();
+  const active = EFFECT_DEFS.filter(d => d.getStop() > now);
+  if (active.length === 0) {
+    container.style.display = 'none';
+    _effectTimerRaf = null;
+    return;
+  }
+  container.style.display = 'flex';
+  // Index existing rows by key
+  const existing = {};
+  for (const row of Array.from(container.children)) existing[row.dataset.key] = row;
+  // Remove stale rows
+  for (const [key, row] of Object.entries(existing)) {
+    if (!active.find(d => d.key === key)) container.removeChild(row);
+  }
+  // Add/update active rows
+  for (const def of active) {
+    const rem = Math.max(0, def.getStop() - now);
+    const tot = def.getTotal();
+    const pct = tot > 0 ? Math.min(100, (rem / tot) * 100) : 100;
+    const secs = (rem / 1000).toFixed(1);
+    let row = existing[def.key];
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'effect-timer-row';
+      row.dataset.key = def.key;
+      row.innerHTML = `<span class="et-icon">${def.icon}</span><span class="et-label">${def.label}</span><div class="et-bar-wrap"><div class="et-bar" style="background:${def.color};width:100%"></div></div><span class="et-secs"></span>`;
+      container.appendChild(row);
+    }
+    row.querySelector('.et-bar').style.width  = pct + '%';
+    row.querySelector('.et-secs').textContent = secs + 's';
+  }
+  _effectTimerRaf = requestAnimationFrame(tickEffectTimers);
+}
+
+function startEffectTimerLoop() {
+  if (!_effectTimerRaf) _effectTimerRaf = requestAnimationFrame(tickEffectTimers);
+}
 
 function startRewind(e) {
   if (e) e.preventDefault();
@@ -1735,6 +1881,7 @@ function startRewind(e) {
   const btn    = document.getElementById('rewind-btn');
   const canvas = document.getElementById('canvas') || document.getElementById('nostalgist-canvas');
   const target = emuReady && canvas ? canvas : document.body;
+  btn.style.display = 'block';
   btn.classList.add('rewinding');
   if (!rewindTimer) {
     // Só cria o intervalo se não há um rodando
@@ -1752,6 +1899,7 @@ function stopRewind() {
   const canvas = document.getElementById('canvas') || document.getElementById('nostalgist-canvas');
   const target = emuReady && canvas ? canvas : document.body;
   btn.classList.remove('rewinding');
+  btn.style.display = 'none';
   target.dispatchEvent(new KeyboardEvent('keyup', { ...keyProps('r'), bubbles: true }));
 }
 
@@ -1775,7 +1923,9 @@ function giftRewind(ms) {
   startRewind();
   if (rewindStopTimer) clearTimeout(rewindStopTimer);
   rewindStopTs    = now + total;
+  rewindTotal     = total;
   rewindStopTimer = setTimeout(stopRewind, total);
+  startEffectTimerLoop();
   return total;
 }
 
@@ -1808,7 +1958,9 @@ function giftSlowmo(ms) {
   startSlowmo();
   if (slowmoStopTimer) clearTimeout(slowmoStopTimer);
   slowmoStopTs    = now + total;
+  slowmoTotal     = total;
   slowmoStopTimer = setTimeout(stopSlowmo, total);
+  startEffectTimerLoop();
   return total;
 }
 
@@ -1840,7 +1992,9 @@ function giftFastmo(ms) {
   startFastmo();
   if (fastmoStopTimer) clearTimeout(fastmoStopTimer);
   fastmoStopTs    = now + total;
+  fastmoTotal     = total;
   fastmoStopTimer = setTimeout(stopFastmo, total);
+  startEffectTimerLoop();
   return total;
 }
 
@@ -1849,8 +2003,40 @@ function giftUnplug(ms) {
   const remaining = unplugUntil > now ? unplugUntil - now : 0;
   const total = Math.min(remaining + (ms || 5000), 300000); // acumula, cap 5min
   unplugUntil = now + total;
+  unplugTotal = total;
   if (unplugTimer) clearTimeout(unplugTimer);
   unplugTimer = setTimeout(() => { unplugUntil = 0; unplugTimer = null; }, total);
+  startEffectTimerLoop();
+  const vid    = document.getElementById('unplug-video');
+  const canvas = document.getElementById('unplug-canvas');
+  if (vid && canvas) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let rafId = null;
+    function drawChromaFrame() {
+      if (vid.paused || vid.ended) return;
+      if (canvas.width !== vid.videoWidth || canvas.height !== vid.videoHeight) {
+        canvas.width  = vid.videoWidth;
+        canvas.height = vid.videoHeight;
+      }
+      ctx.drawImage(vid, 0, 0);
+      const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d    = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        if (g > 100 && g > r * 1.4 && g > b * 1.4) d[i+3] = 0;
+      }
+      ctx.putImageData(img, 0, 0);
+      rafId = requestAnimationFrame(drawChromaFrame);
+    }
+    vid.onended = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      canvas.style.display = 'none';
+      vid.onended = null;
+    };
+    vid.currentTime = 0;
+    canvas.style.display = 'block';
+    vid.play().then(() => { rafId = requestAnimationFrame(drawChromaFrame); }).catch(() => {});
+  }
   return total;
 }
 
@@ -1859,8 +2045,10 @@ function giftMirror(ms) {
   const remaining = mirrorUntil > now ? mirrorUntil - now : 0;
   const total = Math.min(remaining + (ms || 5000), 120000); // acumula, cap 120s
   mirrorUntil = now + total;
+  mirrorTotal = total;
   if (mirrorTimer) clearTimeout(mirrorTimer);
   mirrorTimer = setTimeout(() => { mirrorUntil = 0; mirrorTimer = null; }, total);
+  startEffectTimerLoop();
   return total;
 }
 
@@ -1870,6 +2058,7 @@ function giftBlackout(ms) {
   const remaining = blackoutStopTs > now ? blackoutStopTs - now : 0;
   const total = Math.min(remaining + (ms || 5000), 120000); // acumula, cap 120s
   blackoutStopTs = now + total;
+  blackoutTotal  = total;
   if (overlay) overlay.style.display = 'block';
   if (blackoutTimer) clearTimeout(blackoutTimer);
   blackoutTimer = setTimeout(() => {
@@ -1877,6 +2066,7 @@ function giftBlackout(ms) {
     blackoutTimer = null;
     blackoutStopTs = 0;
   }, total);
+  startEffectTimerLoop();
   return total;
 }
 
@@ -1939,7 +2129,9 @@ function giftSplash(ms) {
   const remaining = splashStopTs > now ? splashStopTs - now : 0;
   const total = Math.min(remaining + (ms || 5000), 120000); // acumula, cap 120s
   splashStopTs = now + total;
+  splashTotal  = total;
   if (overlay) overlay.style.display = 'block';
+  startEffectTimerLoop();
   if (canvas)  drawSplashCanvas(canvas, remaining > 0); // additive: acumula gotas
   if (splashTimer) clearTimeout(splashTimer);
   splashTimer = setTimeout(() => {
